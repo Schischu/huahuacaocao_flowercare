@@ -102,7 +102,7 @@ class MifloraScanner:
   def __init__(self):
     self.scanner = Scanner()
 
-  def _discover(self, duration=1):
+  def _discover(self, duration=1, filter=None):
     devices = self.scanner.scan(duration)
     if devices is None:
       return None
@@ -110,6 +110,13 @@ class MifloraScanner:
     mifloraDevices = []
     for device in devices:
       #print device.getScanData()
+
+      manufactureId = "{}{}{}".format(device.addr[0:2], device.addr[3:5], device.addr[6:8]).upper()
+      uniqueId = "{}{}".format(device.addr[-5:-3], device.addr[-2:]).upper()
+
+      if filter is not None:
+        if uniqueId.upper() != filter.upper():
+          continue
 
       deviceInformation = DeviceInformation()
       deviceInformation.localName    = device.getValueText(0x09) #Local Name
@@ -128,9 +135,9 @@ class MifloraScanner:
         uuid = "".join(reversed([uuid[i:i+2] for i in range(0, len(uuid), 2)]))
         deviceInformation.uuid       = UUID(uuid)
 
-      if deviceInformation.localName == "Flower care":
-        deviceInformation.id = "{}{}".format(deviceInformation.addr[-5:-3], deviceInformation.addr[-2:]).upper()
-        deviceInformation.localName = deviceInformation.localName + " {}".format(deviceInformation.id)
+      if deviceInformation.localName == "Flower care" or manufactureId == "C47C8D":
+        deviceInformation.id = uniqueId.upper()
+        deviceInformation.localName = "Flower care {}".format(deviceInformation.id)
 
       if deviceInformation.uuid is not None:
         if deviceInformation.uuid in SCAN_UUIDS:
@@ -153,12 +160,12 @@ class MifloraScanner:
 
     return mifloraDevices
 
-  def discover(self):
-    devices = self._discover(1)
+  def discover(self, filter):
+    devices = self._discover(1, filter)
     if devices is None:
       return None
 
-    return devices[0]
+    return devices
 
   def discoverAll(self):
     devices = self._discover(10)
@@ -319,6 +326,8 @@ class Miflora:
     realtimeData.moisture     = struct.unpack(STRUCT_UInt8LE, data[7:8])[0]
     realtimeData.conductivity = struct.unpack(STRUCT_UInt16LE, data[8:10])[0]
 
+    realtimeData.light = (realtimeData.light * 1.0) / 1000.0
+
     self.notifyCharacteristic(DATA_SERVICE_UUID, DATA_WRITE_MODE_CHANGE_UUID, False)
 
     return realtimeData
@@ -328,9 +337,20 @@ class Miflora:
 
 
 def main(argv):
+  deviceFilter = None
+
   print "Starting"
+
+  if len(argv) > 1:
+    deviceFilter = argv[1]
+
   scanner = MifloraScanner()
-  devices = scanner.discoverAll()
+  if deviceFilter is not None:
+    devices = scanner.discover(deviceFilter)
+  else:
+    devices = scanner.discoverAll()
+
+
 
   for device in devices:
     print device
