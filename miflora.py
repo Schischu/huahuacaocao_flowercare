@@ -290,45 +290,53 @@ class Miflora:
       return str
 
   def getRealtimeData(self):
-    self.notifyCharacteristic(DATA_SERVICE_UUID, DATA_WRITE_MODE_CHANGE_UUID, True)
-
-    self.waitingForData = True
-    while self.waitingForData:
-      notified = self.peripheral.waitForNotifications(10)
-      if notified:
-        pass
-
-    data = self.readDataCharacteristic(DATA_SERVICE_UUID, DATA_DATA_UUID)
-
-    #print "DATA", " ".join("{:02x}".format(ord(c)) for c in data)
-
-    #09 01 
-    #00 
-    #fa 00 00 
-    #00 
-    #00 
-    #00 00 
-    #02 3c 00 fb 34 9b
-
-    #f3 00 
-    #00 
-    #23 00 00 
-    #00 
-    #0d 
-    #30 00 
-    #02 3c 00 fb 34 9b
-
 
     realtimeData = Miflora.RealtimeData()
-    realtimeData.temperature = (struct.unpack(STRUCT_UInt16LE, data[0:2])[0]) / 10.0
-    realtimeData.unknown     = struct.unpack(STRUCT_UInt8LE, data[2:3])[0]
-    realtimeData.light       = struct.unpack(STRUCT_UInt32LE, data[3:6] + "\0")[0]
-    realtimeData.moisture     = struct.unpack(STRUCT_UInt8LE, data[7:8])[0]
-    realtimeData.conductivity = struct.unpack(STRUCT_UInt16LE, data[8:10])[0]
 
-    realtimeData.light = (realtimeData.light * 1.0) / 1000.0
+    dataAvailable = False
+    try:
+      self.notifyCharacteristic(DATA_SERVICE_UUID, DATA_WRITE_MODE_CHANGE_UUID, True)
+      dataAvailable = True
+    except Exception, ex:
+      print ex
 
-    self.notifyCharacteristic(DATA_SERVICE_UUID, DATA_WRITE_MODE_CHANGE_UUID, False)
+    if dataAvailable:
+      self.waitingForData = True
+      while self.waitingForData:
+        notified = self.peripheral.waitForNotifications(10)
+        if notified:
+          pass
+
+      data = self.readDataCharacteristic(DATA_SERVICE_UUID, DATA_DATA_UUID)
+
+      #print "DATA", " ".join("{:02x}".format(ord(c)) for c in data)
+
+      #09 01 
+      #00 
+      #fa 00 00 
+      #00 
+      #00 
+      #00 00 
+      #02 3c 00 fb 34 9b
+
+      #f3 00 
+      #00 
+      #23 00 00 
+      #00 
+      #0d 
+      #30 00 
+      #02 3c 00 fb 34 9b
+
+
+      realtimeData.temperature = (struct.unpack(STRUCT_UInt16LE, data[0:2])[0]) / 10.0
+      realtimeData.unknown     = struct.unpack(STRUCT_UInt8LE, data[2:3])[0]
+      realtimeData.light       = struct.unpack(STRUCT_UInt32LE, data[3:6] + "\0")[0]
+      realtimeData.moisture     = struct.unpack(STRUCT_UInt8LE, data[7:8])[0]
+      realtimeData.conductivity = struct.unpack(STRUCT_UInt16LE, data[8:10])[0]
+
+      realtimeData.light = (realtimeData.light * 1.0) / 1000.0
+
+      self.notifyCharacteristic(DATA_SERVICE_UUID, DATA_WRITE_MODE_CHANGE_UUID, False)
 
     return realtimeData
 
