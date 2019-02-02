@@ -293,14 +293,9 @@ class Miflora:
 
     realtimeData = Miflora.RealtimeData()
 
-    dataAvailable = False
     try:
       self.notifyCharacteristic(DATA_SERVICE_UUID, DATA_WRITE_MODE_CHANGE_UUID, True)
-      dataAvailable = True
-    except Exception, ex:
-      print ex
 
-    if dataAvailable:
       self.waitingForData = True
       while self.waitingForData:
         notified = self.peripheral.waitForNotifications(10)
@@ -337,6 +332,8 @@ class Miflora:
       realtimeData.light = (realtimeData.light * 1.0) / 1000.0
 
       self.notifyCharacteristic(DATA_SERVICE_UUID, DATA_WRITE_MODE_CHANGE_UUID, False)
+    except Exception, ex:
+      print ex
 
     return realtimeData
 
