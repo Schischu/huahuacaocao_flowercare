@@ -130,10 +130,13 @@ class MifloraScanner:
       deviceInformation.addr         = device.addr
       deviceInformation.rssi         = device.rssi
 
-      uuid = device.getValueText(0x02) #Incomplete 128b Services
-      if uuid is not None:
-        uuid = "".join(reversed([uuid[i:i+2] for i in range(0, len(uuid), 2)]))
-        deviceInformation.uuid       = UUID(uuid)
+      uuids = device.getValueText(0x02) #Incomplete 128b Services
+      if uuids is not None:
+        uuids = uuids.split(",")
+        for uuid in uuids:
+            #uuid = "".join(reversed([uuid[i:i+2] for i in range(0, len(uuid), 2)]))
+            deviceInformation.uuid       = UUID(uuid)
+
 
       if deviceInformation.localName == "Flower care" or manufactureId == "C47C8D":
         deviceInformation.id = uniqueId.upper()
