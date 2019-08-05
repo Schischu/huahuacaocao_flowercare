@@ -101,39 +101,44 @@ def main(argv):
         flower["sensor_name"] = deviceSensor["name"]
         sensorId = flower["sensor_name"][-4:].lower()
 
-        flower["battery"] = battery
+        if battery >= 0:
+          flower["battery"] = battery
 
-        flower["air_temperature"] = realtimeData.temperature
-        if realtimeData.temperature < plant["temperature_C_threshold_lower"]:
-          flower["air_temperature_status"] = "air_temperature_too_low"
-        elif realtimeData.temperature > plant["temperature_C_threshold_upper"]:
-          flower["air_temperature_status"] = "air_temperature_too_high"
-        else:
-          flower["air_temperature_status"] = "air_temperature_good"
+        if realtimeData.temperature >= 0:
+          flower["air_temperature"] = realtimeData.temperature
+          if realtimeData.temperature < plant["temperature_C_threshold_lower"]:
+            flower["air_temperature_status"] = "air_temperature_too_low"
+          elif realtimeData.temperature > plant["temperature_C_threshold_upper"]:
+            flower["air_temperature_status"] = "air_temperature_too_high"
+          else:
+            flower["air_temperature_status"] = "air_temperature_good"
 
-        flower["fertilizer"] = realtimeData.conductivity
-        if realtimeData.conductivity < plant["fertility_us_cm_threshold_lower"]:
-          flower["fertilizer_status"] = "fertilizer_too_low"
-        elif realtimeData.conductivity > plant["fertility_us_cm_threshold_upper"]:
-          flower["fertilizer_status"] = "fertilizer_too_high"
-        else:
-          flower["fertilizer_status"] = "fertilizer_good"
+        if realtimeData.conductivity >= 0:
+          flower["fertilizer"] = realtimeData.conductivity
+          if realtimeData.conductivity < plant["fertility_us_cm_threshold_lower"]:
+            flower["fertilizer_status"] = "fertilizer_too_low"
+          elif realtimeData.conductivity > plant["fertility_us_cm_threshold_upper"]:
+            flower["fertilizer_status"] = "fertilizer_too_high"
+          else:
+            flower["fertilizer_status"] = "fertilizer_good"
 
-        flower["light"] = realtimeData.light
-        if realtimeData.light < plant["light_lux_threshold_lower"]:
-          flower["light_status"] = "light_too_low"
-        elif realtimeData.light > plant["light_lux_threshold_upper"]:
-          flower["light_status"] = "light_too_high"
-        else:
-          flower["light_status"] = "light_good"
+        if realtimeData.light >= 0:
+          flower["light"] = realtimeData.light
+          if realtimeData.light < plant["light_lux_threshold_lower"]:
+            flower["light_status"] = "light_too_low"
+          elif realtimeData.light > plant["light_lux_threshold_upper"]:
+            flower["light_status"] = "light_too_high"
+          else:
+            flower["light_status"] = "light_good"
 
-        flower["watering"] = realtimeData.moisture
-        if realtimeData.moisture < plant["moisture_threshold_lower"]:
-          flower["watering_status"] = "soil_moisture_too_low"
-        elif realtimeData.moisture > plant["moisture_threshold_upper"]:
-          flower["watering_status"] = "soil_moisture_too_high"
-        else:
-          flower["watering_status"] = "soil_moisture_good"
+        if realtimeData.moisture >= 0:
+          flower["watering"] = realtimeData.moisture
+          if realtimeData.moisture < plant["moisture_threshold_lower"]:
+            flower["watering_status"] = "soil_moisture_too_low"
+          elif realtimeData.moisture > plant["moisture_threshold_upper"]:
+            flower["watering_status"] = "soil_moisture_too_high"
+          else:
+            flower["watering_status"] = "soil_moisture_good"
 
         now = datetime.utcnow()
         flower["last_utc"] = now.strftime("%Y-%m-%dT%H:%M:%SZ") #2017-11-13T17:44:11Z

@@ -4,6 +4,8 @@ import time
 import math
 import os
 import sys
+import ctypes
+from enum import IntEnum
 
 from bluepy.btle import UUID, Peripheral, Scanner, DefaultDelegate, BTLEException
 
@@ -88,6 +90,34 @@ STRUCT_Float = 'f'
 STRUCT_Bytes = 'B'
 STRUCT_String = 's'
 
+class FrameControlFlags(IntEnum):
+  NewFactory = 1 << 0
+  Connected = 1 << 1
+  Central = 1 << 2
+  Encrypted = 1 << 3
+  MacAddress = 1 << 4
+  Capabilities = 1 << 5
+  Event = 1 << 6
+  CustomData = 1 << 7
+  Subtitle = 1 << 8
+  Binding = 1 << 9
+
+class CapabilityFlags(IntEnum):
+  Connectable = 1 << 0
+  Central = 1 << 1
+  Encrypt = 1 << 2
+  IO = 1 << 3 | 1 << 4
+
+XiaomiEventIDs = {
+  0x1004: "temperature",
+  0x1006: "humidity",
+  0x1007: "illuminance",
+  0x1008: "moisture",
+  0x1009: "fertility",
+  0x100A: "battery",
+  0x100D: "temperatureandhumidity"
+}
+
 class DeviceInformation:
   localName = ""
   flags = 0
@@ -96,6 +126,17 @@ class DeviceInformation:
   rssi = 0.0
   uuid = None
   id = ""
+  eventData = None
+
+  def __init__(self):
+    self.localName = ""
+    self.flags = 0
+    self.adData = ""
+    self.addr = ""
+    self.rssi = 0.0
+    self.uuid = None
+    self.id = ""
+    self.eventData = None
 
 class MifloraScanner:
 
@@ -115,6 +156,7 @@ class MifloraScanner:
       uniqueId = "{}{}".format(device.addr[-5:-3], device.addr[-2:]).upper()
 
       if filter is not None:
+        #print uniqueId.upper(), "?", filter.upper()
         if uniqueId.upper() != filter.upper():
           continue
 
@@ -144,18 +186,119 @@ class MifloraScanner:
 
       if deviceInformation.uuid is not None:
         if deviceInformation.uuid in SCAN_UUIDS:
-          print "-"*60
-          print "deviceInformation.flags:", deviceInformation.flags
-          print "deviceInformation.addr:", deviceInformation.addr
-          print "deviceInformation.rssi:", deviceInformation.rssi
-          print "deviceInformation.id:", deviceInformation.id
-          print "deviceInformation.localName:", deviceInformation.localName
-          print "deviceInformation.adData:", deviceInformation.adData
-          print "deviceInformation.uuid:", deviceInformation.uuid
+          if False:
+            print "deviceInformation.flags:", deviceInformation.flags
+            print "deviceInformation.addr:", deviceInformation.addr
+            print "deviceInformation.rssi:", deviceInformation.rssi
+            print "deviceInformation.id:", deviceInformation.id
+            print "deviceInformation.localName:", deviceInformation.localName
+            print "deviceInformation.uuid:", deviceInformation.uuid
+            print "deviceInformation.adData:", deviceInformation.adData
+
+          if deviceInformation.adData is not None:
+            #adData = "".join(reversed([deviceInformation.adData[i:i+2] for i in range(0, len(deviceInformation.adData), 2)]))
+            adData = deviceInformation.adData[4:]
+            hexAdData =  bytearray.fromhex(adData)
+            #for i in hexAdData:
+            #  print '''%02X''' % (i)
+
+            version   =  (hexAdData[1] & 0xF0) >> 4
+            flags     = ((hexAdData[1] & 0xF) << 4) | hexAdData[0]
+
+            _isNewFactory    = (flags & FrameControlFlags.NewFactory) != 0
+            _isConnected     = (flags & FrameControlFlags.Connected) != 0
+            _isCentral       = (flags & FrameControlFlags.Central) != 0
+            _isEncrypted     = (flags & FrameControlFlags.Encrypted) != 0
+            _hasMacAddress   = (flags & FrameControlFlags.MacAddress) != 0
+            _hasCapabilities = (flags & FrameControlFlags.Capabilities) != 0
+            _hasEvent        = (flags & FrameControlFlags.Event) != 0
+            _hasCustomData   = (flags & FrameControlFlags.CustomData) != 0
+            _hasSubtitle     = (flags & FrameControlFlags.Subtitle) != 0
+            _isBindingFrame  = (flags & FrameControlFlags.Binding) != 0
+
+            if False:
+              print "NF {}, CN {}, CE {}, EN {}, MA {}, CA {}, EV {}, CD {}, ST {}, BF {}".format(
+                _isNewFactory, _isConnected, _isCentral, _isEncrypted,
+                _hasMacAddress, _hasCapabilities, _hasEvent, _hasCustomData,
+                _hasSubtitle, _isBindingFrame)
+
+            productID =  (hexAdData[2] << 8) | hexAdData[3]
+
+            frameCounter = hexAdData[4]
+            offset = 5
+
+            _macAddress = ""
+            if _hasMacAddress:
+              for i in range(0,6):
+                _macAddress = _macAddress + hex(hexAdData[offset+i]) + ":"
+
+              if False:
+                print "MA", _macAddress
+              offset += 6
+
+            _capabilities = False
+            if _hasCapabilities:
+              _capabilities = hexAdData[offset]
+              offset += 1
+              if False:
+                print "CA", _capabilities
+
+            if _hasEvent:
+              eventID  = (hexAdData[offset + 1] << 8) | hexAdData[offset]
+              eventName   = XiaomiEventIDs[eventID]
+              dataLength   = hexAdData[offset + 2]
+              eventData = None
+              if dataLength == 1:
+                eventData = hexAdData[offset + 3]
+              elif dataLength == 2:
+                eventData = (hexAdData[offset + 4] << 8) | hexAdData[offset + 3]
+              elif dataLength == 3:
+                eventData = (hexAdData[offset + 5] << 16) | (hexAdData[offset + 4] << 8) | hexAdData[offset + 3]
+              elif dataLength == 4:
+                eventData = (hexAdData[offset + 6] << 24) | (hexAdData[offset + 5] << 16) | (hexAdData[offset + 4] << 8) | hexAdData[offset + 3]
+
+
+              if False:
+                print "eventID:", eventID 
+                print "eventName:", eventName 
+                print "dataLength:", dataLength 
+                print "eventData:", eventData 
+
+              deviceInformation.eventData = Miflora.RealtimeData()
+
+              if eventName == "temperature":
+                if eventData > 32768:
+                  deviceInformation.eventData.temperature = ((eventData - 32768) * -1) / 10.0
+                else:
+                  deviceInformation.eventData.temperature = eventData / 10.0
+              elif eventName == "humidity":
+                deviceInformation.eventData.unknown = eventData / 10.0
+              elif eventName == "illuminance":
+                deviceInformation.eventData.light = eventData #(eventData * 1.0) / 1000.0
+              elif eventName == "moisture":
+                deviceInformation.eventData.moisture = eventData
+              elif eventName == "fertility":
+                deviceInformation.eventData.conductivity = eventData
+              elif eventName == "battery":
+                deviceInformation.eventData.battery = eventData
+              elif eventName == "temperatureandhumidity":
+                deviceInformation.eventData.temperature = eventData & 0xFFFF
+                deviceInformation.eventData.unknown = eventData >> 16
+
+                if eventData > 32768:
+                  deviceInformation.eventData.temperature = ((deviceInformation.eventData.temperature - 32768) * -1) / 10.0
+                else:
+                  deviceInformation.eventData.temperature = deviceInformation.eventData.temperature / 10.0
+
+                deviceInformation.eventData.unknown = deviceInformation.eventData.unknown / 10.0
+
+              if False:
+                print "eventData:", deviceInformation.eventData
 
           flower = Miflora(deviceInformation)
 
           print "Found Flower:", flower
+          #print "-"*60
           mifloraDevices.append(flower)
 
     if len(mifloraDevices) == 0:
@@ -190,16 +333,26 @@ class Miflora:
       try:
         ADDR_TYPE_PUBLIC = "public"
         self.peripheral = Peripheral(self._deviceInformation.addr, ADDR_TYPE_PUBLIC)
+    
+        print "Connected to", self._deviceInformation.addr
         return True
       except BTLEException, ex:
-        if i == 10:
+        if i < 9:
+          print "Retrying (" + str(i) + ")"
+        else:
           print "BTLE Exception", ex
         continue
 
+    print "Connection to", self._deviceInformation.addr, "failed"
     return False
 
   def __str__(self):
-    str = '{{name: "{}" addr: "{}"}}'.format(self.name, self._deviceInformation.addr)
+    str = '{{name: "{}" addr: "{}"'.format(self.name, self._deviceInformation.addr)
+
+    if self._deviceInformation.eventData is not None:
+      str = str + ' eventData: "{}"'.format(self._deviceInformation.eventData)
+
+    str = str + "}}"
     return str
 
 ################
@@ -265,7 +418,7 @@ class Miflora:
   def getBattery(self):
     data = self.readDataCharacteristic(DATA_SERVICE_UUID, DATA_BATTERY_VERSION_UUID)
     if data is None:
-      return 0
+      return None
 
     batteryLevel = ord(data[0])
 
@@ -274,22 +427,39 @@ class Miflora:
   def getDeviceFirmwareVersion(self):
     return None
 
+  def getEventData(self):
+    return self._deviceInformation.eventData
+
   class RealtimeData:
-    temperature = 0
-    unknown = 0
-    light = 0
-    moisture = 0
-    conductivity = 0
+    temperature = None
+    unknown = None
+    light = None
+    moisture = None
+    conductivity = None
+    battery = None
 
     def __init__(self):
-      self.temperature = 0
-      self.unknown = 0
-      self.light = 0
-      self.moisture = 0
-      self.conductivity = 0
+      self.temperature = None
+      self.unknown = None
+      self.light = None
+      self.moisture = None
+      self.conductivity = None
+      self.battery = None
 
     def __str__(self):
-      str = '{{moisture: "{}" conductivity: "{}" light: "{}" temperature: "{}" unknown: "{}"}}'.format(self.moisture, self.conductivity, self.light, self.temperature, self.unknown)
+      str = ""
+      if self.moisture is not None:
+        str = str + '{{moisture: "{}"}}'.format(self.moisture)
+      if self.conductivity is not None:
+        str = str + '{{conductivity: "{}"}}'.format(self.conductivity)
+      if self.light is not None:
+        str = str + '{{light: "{}"}}'.format(self.light)
+      if self.temperature is not None:
+        str = str + '{{temperature: "{}"}}'.format(self.temperature)
+      if self.unknown is not None:
+        str = str + '{{humidity: "{}"}}'.format(self.unknown)
+      if self.battery is not None:
+        str = str + '{{battery: "{}"}}'.format(self.battery)
       return str
 
   def getRealtimeData(self):
@@ -326,7 +496,7 @@ class Miflora:
       #02 3c 00 fb 34 9b
 
 
-      realtimeData.temperature = (struct.unpack(STRUCT_UInt16LE, data[0:2])[0]) / 10.0
+      realtimeData.temperature = (struct.unpack(STRUCT_SInt16LE, data[0:2])[0]) / 10.0
       realtimeData.unknown     = struct.unpack(STRUCT_UInt8LE, data[2:3])[0]
       realtimeData.light       = struct.unpack(STRUCT_UInt32LE, data[3:6] + "\0")[0]
       realtimeData.moisture     = struct.unpack(STRUCT_UInt8LE, data[7:8])[0]
@@ -343,29 +513,42 @@ class Miflora:
   def onRealtimeData(self, data):
     self.waitingForData = False
 
-
 def main(argv):
   deviceFilter = None
 
   print "Starting"
+  print "-"*60
 
   if len(argv) > 1:
-    deviceFilter = argv[1]
+    deviceFilter = argv[1].upper()
 
   scanner = MifloraScanner()
-  if deviceFilter is not None:
-    devices = scanner.discover(deviceFilter)
+  devices = None
+  for i in range(0, 10):
+    if deviceFilter is not None:
+      devices = scanner.discover(deviceFilter)
+    else:
+      devices = scanner.discoverAll()
+
+    if devices is not None:
+      print "-"*60
+      for device in devices:
+        #print "Connecting to", device
+        print "EventData", device, device.getEventData()
+
+  if devices is not None:
+    print "-"*60
+    for device in devices:
+      #print "Connecting to", device
+      #print "EventData", device.getEventData()
+
+      if device.connectAndSetup() is True:
+        print "Battery     ", device.getBattery(), "%"
+        print "RealtimeData", device.getRealtimeData()
+
+      print "-"*60
   else:
-    devices = scanner.discoverAll()
-
-
-
-  for device in devices:
-    print device
-
-    if device.connectAndSetup() is True:
-      #print "Battery        ", device.getBattery(), "%"
-      print "RealtimeData", device.getRealtimeData()
+    print "No devices found"
 
 if __name__ == "__main__":
   main(sys.argv)
