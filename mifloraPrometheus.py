@@ -163,7 +163,7 @@ def dataToPrometheus(sensorId, battery, realtimeData, configuration, plant, infl
       flower["air_temperature_status"][1] = "too_high"
 
   if realtimeData.conductivity is not None:
-    flower["fertilizer"] = ("Fertilizer", int(realtimeData.conductivity))
+    flower["fertilizer"] = ("Fertilizer", float(realtimeData.conductivity))
     flower["fertilizer_status"] = ["Fertilizer Status", "good", ["good", "too_low", "too_high"]]
 
     if realtimeData.conductivity < plant["fertility_us_cm_threshold_lower"]:
@@ -172,7 +172,7 @@ def dataToPrometheus(sensorId, battery, realtimeData, configuration, plant, infl
       flower["fertilizer_status"][1] = "too_high"
 
   if realtimeData.light is not None:
-    flower["light"] = ("Light", int(realtimeData.light))
+    flower["light"] = ("Light", float(realtimeData.light))
     flower["light_status"] = ["Light Status", "good", ["good", "too_low", "too_high"]]
 
     if realtimeData.light < plant["light_lux_threshold_lower"]:
@@ -181,7 +181,7 @@ def dataToPrometheus(sensorId, battery, realtimeData, configuration, plant, infl
       flower["light_status"][1] = "too_high"
 
   if realtimeData.moisture is not None:
-    flower["watering"] = ("Moisture", int(realtimeData.moisture))
+    flower["watering"] = ("Moisture", float(realtimeData.moisture))
     flower["watering_status"] = ["Moisture Status", "good", ["good", "too_low", "too_high"]]
 
     if realtimeData.moisture < plant["moisture_threshold_lower"]:
