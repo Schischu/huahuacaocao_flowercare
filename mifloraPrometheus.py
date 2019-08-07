@@ -43,8 +43,11 @@ def main(argv):
   if configuration.has_key("influxdb-database") is False:
     configuration["influxdb-database"] = "measurements"
 
+  if configuration.has_key("influxdb-policy") is False:
+    configuration["influxdb-policy"] = "sensor"
+
   if configuration.has_key("influxdb-prefix") is False:
-    configuration["influxdb-prefix"] = "sensor.flower"
+    configuration["influxdb-prefix"] = "flower"
 
   print "Configuration:"
   print "Prometheus Push Client:   ", configuration["prometheuspush-client"]
@@ -58,6 +61,7 @@ def main(argv):
   print "Influxdb Push Server:     ", configuration["influxdb-server"]
   print "Influxdb Push Port:       ", configuration["influxdb-port"]
   print "Influxdb Push Database    ", configuration["influxdb-database"]
+  print "Influxdb Push Policy      ", configuration["influxdb-policy"]
   print "Influxdb Push Prefix      ", configuration["influxdb-prefix"]
 
   plants = []
@@ -79,7 +83,16 @@ def main(argv):
   influxDbClient = InfluxDBClient(configuration["influxdb-server"], configuration["influxdb-port"], 
     configuration["influxdb-username"], configuration["influxdb-password"], configuration["influxdb-database"])
 
-  influxDbClient.create_database(configuration["influxdb-database"])
+  try:
+    influxDbClient.create_database(configuration["influxdb-database"])
+  except InfluxDBClientError, ex:
+    print "InfluxDBClientError", ex
+
+    # Drop and create
+    #client.drop_database(DBNAME)
+    #client.create_database(DBNAME)
+
+  influxDbClient.create_retention_policy(configuration["influxdb-policy"], 'INF', 3, default=True)
 
   for device in devices:
     print device
@@ -216,7 +229,7 @@ def dataToPrometheus(sensorId, battery, realtimeData, configuration, plant, infl
     influxDbJson[0]["fields"][key] = flower[key][1]
 
   print "Pushing", influxDbJson
-  influxDbClient.write_points(influxDbJson)
+  influxDbClient.write_points(influxDbJson, retention_policy=configuration["influxdb-policy"])
 
 if __name__ == "__main__":
   main(sys.argv)
