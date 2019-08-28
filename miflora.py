@@ -83,6 +83,9 @@ SCAN_UUIDS = [UNKNOWN_H_SERVICE_UUID]
 
 DEFAULT_DEVICE_NAME = 'Flower care'
 
+STRUCT_Int8LE = 'b'
+STRUCT_Int16LE = 'h'
+STRUCT_Int32LE = 'i'
 STRUCT_UInt8LE = 'B'
 STRUCT_UInt16LE = 'H'
 STRUCT_UInt32LE = 'I'
@@ -496,7 +499,7 @@ class Miflora:
       #02 3c 00 fb 34 9b
 
 
-      realtimeData.temperature = (struct.unpack(STRUCT_SInt16LE, data[0:2])[0]) / 10.0
+      realtimeData.temperature = (struct.unpack(STRUCT_Int16LE, data[0:2])[0]) / 10.0
       realtimeData.unknown     = struct.unpack(STRUCT_UInt8LE, data[2:3])[0]
       realtimeData.light       = struct.unpack(STRUCT_UInt32LE, data[3:6] + "\0")[0]
       realtimeData.moisture     = struct.unpack(STRUCT_UInt8LE, data[7:8])[0]
@@ -524,6 +527,7 @@ def main(argv):
 
   scanner = MifloraScanner()
   devices = None
+
   for i in range(0, 10):
     if deviceFilter is not None:
       devices = scanner.discover(deviceFilter)
@@ -535,6 +539,7 @@ def main(argv):
       for device in devices:
         #print "Connecting to", device
         print "EventData", device, device.getEventData()
+      break
 
   if devices is not None:
     print "-"*60

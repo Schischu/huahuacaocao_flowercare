@@ -26,7 +26,7 @@ def main(argv):
     configuration["prometheuspush-prefix"] = "flower"
 
   if configuration.has_key("influxdb-client") is False:
-    configuration["influxdb-client"] = "Ruuvi-Influxdb"
+    configuration["influxdb-client"] = "Miflora-Influxdb"
 
   if configuration.has_key("influxdb-server") is False:
     configuration["influxdb-server"] = "127.0.0.1"
@@ -94,53 +94,54 @@ def main(argv):
 
   influxDbClient.create_retention_policy(configuration["influxdb-policy"], 'INF', 3, default=True)
 
-  for device in devices:
-    print device
+  if devices is not None:
+    for device in devices:
+      print device
 
-    deviceSensor = None
-    for sensor in sensors:
-      if sensor.has_key("name") and sensor["name"] == device.name:
-        deviceSensor = sensor
+      deviceSensor = None
+      for sensor in sensors:
+        if sensor.has_key("name") and sensor["name"] == device.name:
+          deviceSensor = sensor
 
-    print "deviceSensor", deviceSensor
-    sensorId = str(deviceSensor["name"][-4:].lower())
+      print "deviceSensor", deviceSensor
+      sensorId = str(deviceSensor["name"][-4:].lower())
 
-    devicePlant = None
-    if deviceSensor is not None and deviceSensor.has_key("plant-name"):
-      for plant in plants:
-        if plant.has_key("name") and plant["name"] == deviceSensor["plant-name"]:
-          devicePlant = plant
+      devicePlant = None
+      if deviceSensor is not None and deviceSensor.has_key("plant-name"):
+        for plant in plants:
+          if plant.has_key("name") and plant["name"] == deviceSensor["plant-name"]:
+            devicePlant = plant
 
-    print "devicePlant", devicePlant
+      print "devicePlant", devicePlant
 
-    if devicePlant is not None:
-      eventData = device.getEventData()
-      observed = 1
-      for i in range(0,10):
-        if eventData is not None:
-          #print "eventData", eventData
-          dataToPrometheus(sensorId, eventData.battery, eventData, configuration, plant, influxDbClient)
-          eventData = None
-          observed = observed + 1
+      if devicePlant is not None:
+        eventData = device.getEventData()
+        observed = 1
+        for i in range(0,10):
+          if eventData is not None:
+            #print "eventData", eventData
+            dataToPrometheus(sensorId, eventData.battery, eventData, configuration, plant, influxDbClient)
+            eventData = None
+            observed = observed + 1
 
-        tmpDevices = scanner.discover(sensorId.upper())
-        if tmpDevices is not None:
-          tmpDevice = tmpDevices[0]
-          eventData = tmpDevice.getEventData()
-          time.sleep(3) #Broadcast happens every 1sec, however value doesnt change that often
+          tmpDevices = scanner.discover(sensorId.upper())
+          if tmpDevices is not None:
+            tmpDevice = tmpDevices[0]
+            eventData = tmpDevice.getEventData()
+            time.sleep(3) #Broadcast happens every 1sec, however value doesnt change that often
 
-        time.sleep(0.2) #Broadcast happens every 1sec, however value doesnt change that often
+          time.sleep(0.2) #Broadcast happens every 1sec, however value doesnt change that often
 
 
-      # Makes only sense to connect if we observed at least 5 adv packages (bad signal)
-      if observed > 5 and device.connectAndSetup() is True:
+        # Makes only sense to connect if we observed at least 5 adv packages (bad signal)
+        if observed > 5 and device.connectAndSetup() is True:
 
-        battery =  device.getBattery()
-        realtimeData = device.getRealtimeData()
+          battery =  device.getBattery()
+          realtimeData = device.getRealtimeData()
 
-        dataToPrometheus(sensorId, battery, realtimeData, configuration, plant, influxDbClient)
+          dataToPrometheus(sensorId, battery, realtimeData, configuration, plant, influxDbClient)
 
-        time.sleep(0.2)
+          time.sleep(0.2)
 
 def dataToPrometheus(sensorId, battery, realtimeData, configuration, plant, influxDbClient):
   flower = {}
