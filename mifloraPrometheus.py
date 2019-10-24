@@ -105,6 +105,7 @@ def main(argv):
 
       print "deviceSensor", deviceSensor
       sensorId = str(deviceSensor["name"][-4:].lower())
+      plantName = deviceSensor["plant-name"]
 
       devicePlant = None
       if deviceSensor is not None and deviceSensor.has_key("plant-name"):
@@ -120,7 +121,7 @@ def main(argv):
         for i in range(0,10):
           if eventData is not None:
             #print "eventData", eventData
-            dataToPrometheus(sensorId, eventData.battery, eventData, configuration, plant, influxDbClient)
+            dataToPrometheus(sensorId, eventData.battery, eventData, configuration, devicePlant, influxDbClient)
             eventData = None
             observed = observed + 1
 
@@ -139,14 +140,14 @@ def main(argv):
           battery =  device.getBattery()
           realtimeData = device.getRealtimeData()
 
-          dataToPrometheus(sensorId, battery, realtimeData, configuration, plant, influxDbClient)
+          dataToPrometheus(sensorId, battery, realtimeData, configuration, devicePlant, influxDbClient)
 
           time.sleep(0.2)
 
 def dataToPrometheus(sensorId, battery, realtimeData, configuration, plant, influxDbClient):
   flower = {}
 
-  #flower["plant_name"] = ("Plant", devicePlant["name"])
+  flower["plant"] = ("Plant", str(plant["name"]))
 
   if battery is not None:
     flower["battery"] = ("Battery", battery)
@@ -197,14 +198,15 @@ def dataToPrometheus(sensorId, battery, realtimeData, configuration, plant, infl
   for key in flower.keys():
 
     if type(flower[key][1]) is str:
-      e = Enum(configuration["prometheuspush-prefix"]  + '_' + key + '_total', 
-        flower[key][0], ['sensorid'],
-        states=flower[key][2],
-        registry=registry)
+      if len(flower[key]) == 3:
+        e = Enum(configuration["prometheuspush-prefix"]  + '_' + key + '_total',
+          flower[key][0], ['sensorid'],
+          states=flower[key][2],
+          registry=registry)
 
-      e.labels(sensorid=sensorId).state(flower[key][1])
+        e.labels(sensorid=sensorId).state(flower[key][1])
     else:
-      g = Gauge(configuration["prometheuspush-prefix"]  + '_' + key + '_total', 
+      g = Gauge(configuration["prometheuspush-prefix"]  + '_' + key + '_total',
         flower[key][0], ['sensorid'],
         registry=registry)
 
@@ -212,8 +214,8 @@ def dataToPrometheus(sensorId, battery, realtimeData, configuration, plant, infl
 
     print "Pushing", sensorId, ":", configuration["prometheuspush-prefix"] + '_' + key + '_total', "=", flower[key]
 
-  push_to_gateway(configuration["prometheuspush-server"] + ":" + configuration["prometheuspush-port"], 
-    job=configuration["prometheuspush-client"] + "_" + sensorId, 
+  push_to_gateway(configuration["prometheuspush-server"] + ":" + configuration["prometheuspush-port"],
+    job=configuration["prometheuspush-client"] + "_" + sensorId,
     registry=registry)
 
   influxDbJson = [
