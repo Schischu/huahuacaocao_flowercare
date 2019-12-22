@@ -214,9 +214,12 @@ def dataToPrometheus(sensorId, battery, realtimeData, configuration, plant, infl
 
     print "Pushing", sensorId, ":", configuration["prometheuspush-prefix"] + '_' + key + '_total', "=", flower[key]
 
-  push_to_gateway(configuration["prometheuspush-server"] + ":" + configuration["prometheuspush-port"],
-    job=configuration["prometheuspush-client"] + "_" + sensorId,
-    registry=registry)
+  try:
+    push_to_gateway(configuration["prometheuspush-server"] + ":" + configuration["prometheuspush-port"],
+      job=configuration["prometheuspush-client"] + "_" + sensorId,
+      registry=registry)
+  except:
+    print "Prometheus not available"
 
   influxDbJson = [
   {
@@ -232,7 +235,10 @@ def dataToPrometheus(sensorId, battery, realtimeData, configuration, plant, infl
     influxDbJson[0]["fields"][key] = flower[key][1]
 
   print "Pushing", influxDbJson
-  influxDbClient.write_points(influxDbJson, retention_policy=configuration["influxdb-policy"])
+  try:
+    influxDbClient.write_points(influxDbJson, retention_policy=configuration["influxdb-policy"])
+  except:
+    print "Influxdb not available"
 
 if __name__ == "__main__":
   main(sys.argv)
