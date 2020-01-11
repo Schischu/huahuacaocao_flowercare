@@ -113,6 +113,9 @@ def main(argv):
           if plant.has_key("name") and plant["name"] == deviceSensor["plant-name"]:
             devicePlant = plant
 
+            if deviceSensor.has_key("location"):
+              devicePlant["location"] = deviceSensor["location"]
+
       print "devicePlant", devicePlant
 
       if devicePlant is not None:
@@ -148,6 +151,7 @@ def dataToPrometheus(sensorId, battery, realtimeData, configuration, plant, infl
   flower = {}
 
   flower["plant"] = ("Plant", str(plant["name"]))
+  flower["location"] = ("Location", str(plant["location"]))
 
   if battery is not None:
     flower["battery"] = ("Battery", battery)
