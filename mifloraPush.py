@@ -265,9 +265,8 @@ def pushData(sensorId, battery, realtimeData, configuration, plant, influxDbClie
   lastUtc = ("Updated", now.strftime("%Y-%m-%dT%H:%M:%SZ")) #2017-11-13T17:44:11Z
 
   if configuration["mqtt"]["enabled"]:
-    #print "Pushing Mqtt", influxDbJson
+    print "Pushing Mqtt", sensorId, ":", configuration["mqtt"]["prefix"], flower
     try:
-      print "Pushing Mqtt", sensorId, ":", configuration["mqtt"]["prefix"], flower
       broadcastMqtt(
         configuration["mqtt"]["client"], 
         configuration["mqtt"]["server"], 
@@ -297,7 +296,7 @@ def pushData(sensorId, battery, realtimeData, configuration, plant, influxDbClie
 
         g.labels(sensorid=sensorId).set(flower[key][1])
 
-    print "Pushing", sensorId, ":", configuration["prometheuspush"]["prefix"] + '_' + key + '_total', "=", flower[key]
+    print "Pushing Prometheus", sensorId, ":", configuration["prometheuspush"]["prefix"] + '_' + key + '_total', "=", flower[key]
     try:
       push_to_gateway(configuration["prometheuspush"]["server"] + ":" + configuration["prometheuspush"]["port"],
         job=configuration["prometheuspush"]["client"] + "_" + sensorId,
@@ -319,7 +318,7 @@ def pushData(sensorId, battery, realtimeData, configuration, plant, influxDbClie
     for key in flower.keys():
       influxDbJson[0]["fields"][key] = flower[key][1]
 
-    print "Pushing", influxDbJson
+    print "Pushing InfluxDb", influxDbJson
     try:
       influxDbClient.write_points(influxDbJson, retention_policy=configuration["influxdb"]["policy"])
     except Exception, ex:
