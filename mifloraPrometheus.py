@@ -3,66 +3,138 @@ import json
 import time
 from datetime import datetime
 
+import paho.mqtt.client as mqtt
 from prometheus_client import CollectorRegistry, Gauge, Summary, Enum, push_to_gateway
 from influxdb import InfluxDBClient
 
 from miflora import Miflora, MifloraScanner
+
+def broadcastMqtt(client, server, port, prefix, postfix, data):
+  # Publishing the results to MQTT
+  mqttc = mqtt.Client(client)
+  mqttc.connect(server, port)
+
+  topic = prefix + "/" + postfix
+
+  #print "MQTT Publish", topic, data
+  mqttc.publish(topic, data)
+
+  mqttc.loop(2)
 
 def main(argv):
 
   print "Starting"
 
   configuration = json.load(open('configuration.json'))
-  if configuration.has_key("prometheuspush-client") is False:
-    configuration["prometheuspush-client"] = "Miflora-Prometheus"
 
-  if configuration.has_key("prometheuspush-server") is False:
-    configuration["prometheuspush-server"] = "127.0.0.1"
+  if configuration.has_key("mqtt"):
+    try:
+      if configuration["mqtt"].has_key("client") is False:
+        configuration["mqtt"]["client"] = "Ruuvi-Mqtt"
 
-  if configuration.has_key("prometheuspush-port") is False:
-    configuration["prometheuspush-port"] = 9091
+      if configuration["mqtt"].has_key("server") is False:
+        configuration["mqtt"]["server"] = "127.0.0.1"
 
-  if configuration.has_key("prometheuspush-prefix") is False:
-    configuration["prometheuspush-prefix"] = "flower"
+      if configuration["mqtt"].has_key("port") is False:
+        configuration["mqtt"]["port"] = 1883
 
-  if configuration.has_key("influxdb-client") is False:
-    configuration["influxdb-client"] = "Miflora-Influxdb"
+      if configuration["mqtt"].has_key("prefix") is False:
+        configuration["mqtt"]["prefix"] = "weather"
 
-  if configuration.has_key("influxdb-server") is False:
-    configuration["influxdb-server"] = "127.0.0.1"
+      if configuration["mqtt"].has_key("enabled") is False:
+        configuration["mqtt"]["enabled"] = True
 
-  if configuration.has_key("influxdb-username") is False:
-    configuration["influxdb-username"] = "influxdb"
+      print "MQTT Configuration:"
+      print "MQTT Client:   ", configuration["mqtt"]["client"]
+      print "MQTT Server:   ", configuration["mqtt"]["server"]
+      print "MQTT Port:     ", configuration["mqtt"]["port"]
+      print "MQTT Prefix:   ", configuration["mqtt"]["prefix"]
+      print "MQTT Enabled:  ", configuration["mqtt"]["enabled"]
 
-  if configuration.has_key("influxdb-password") is False:
-    configuration["influxdb-password"] = "influxdb"
+    except Exception, ex:
+      print "Error parsing mqtt configuration", ex
+      configuration["mqtt"]["enabled"] = False
+  else:
+    configuration["mqtt"] = {}
+    configuration["mqtt"]["enabled"] = False
 
-  if configuration.has_key("influxdb-port") is False:
-    configuration["influxdb-port"] = 8086
+  if configuration.has_key("prometheuspush"):
+    try:
+      if configuration["prometheuspush"].has_key("server") is False:
+        configuration["prometheuspush"]["server"] = "127.0.0.1"
 
-  if configuration.has_key("influxdb-database") is False:
-    configuration["influxdb-database"] = "measurements"
+      if configuration["prometheuspush"].has_key("port") is False:
+        configuration["prometheuspush"]["port"] = 9091
 
-  if configuration.has_key("influxdb-policy") is False:
-    configuration["influxdb-policy"] = "sensor"
+      if configuration["prometheuspush"].has_key("client") is False:
+        configuration["prometheuspush"]["client"] = "Ruuvi-Prometheus"
 
-  if configuration.has_key("influxdb-prefix") is False:
-    configuration["influxdb-prefix"] = "flower"
+      if configuration["prometheuspush"].has_key("prefix") is False:
+        configuration["prometheuspush"]["prefix"] = "weather"
 
-  print "Configuration:"
-  print "Prometheus Push Client:   ", configuration["prometheuspush-client"]
-  print "Prometheus Push Server:   ", configuration["prometheuspush-server"]
-  print "Prometheus Push Port:     ", configuration["prometheuspush-port"]
-  print "Prometheus Push Prefix   :", configuration["prometheuspush-prefix"]
+      if configuration["prometheuspush"].has_key("enabled") is False:
+        configuration["prometheuspush"]["enabled"] = True
 
-  print "Influxdb Push Client:     ", configuration["influxdb-client"]
-  print "Influxdb Push Username:   ", configuration["influxdb-username"]
-  print "Influxdb Push Password:   ", configuration["influxdb-password"]
-  print "Influxdb Push Server:     ", configuration["influxdb-server"]
-  print "Influxdb Push Port:       ", configuration["influxdb-port"]
-  print "Influxdb Push Database    ", configuration["influxdb-database"]
-  print "Influxdb Push Policy      ", configuration["influxdb-policy"]
-  print "Influxdb Push Prefix      ", configuration["influxdb-prefix"]
+      print "Prometheus Push Configuration:"
+      print "Prometheus Push Client:   ", configuration["prometheuspush"]["client"]
+      print "Prometheus Push Server:   ", configuration["prometheuspush"]["server"]
+      print "Prometheus Push Port:     ", configuration["prometheuspush"]["port"]
+      print "Prometheus Push Prefix:   ", configuration["prometheuspush"]["prefix"]
+      print "Prometheus Push Enabled:  ", configuration["prometheuspush"]["enabled"]
+
+    except Exception, ex:
+      print "Error parsing prometheuspush configuration", ex
+      configuration["prometheuspush"]["enabled"] = False
+  else:
+    configuration["prometheuspush"] = {}
+    configuration["prometheuspush"]["enabled"] = False
+
+  if configuration.has_key("influxdb"):
+    try:
+      if configuration["influxdb"].has_key("client") is False:
+        configuration["influxdb"]["client"] = "Ruuvi-Influxdb"
+
+      if configuration["influxdb"].has_key("server") is False:
+        configuration["influxdb"]["server"] = "127.0.0.1"
+
+      if configuration["influxdb"].has_key("username") is False:
+        configuration["influxdb"]["username"] = "influxdb"
+
+      if configuration["influxdb"].has_key("password") is False:
+        configuration["influxdb"]["password"] = "influxdb"
+
+      if configuration["influxdb"].has_key("port") is False:
+        configuration["influxdb"]["port"] = 8086
+
+      if configuration["influxdb"].has_key("database") is False:
+        configuration["influxdb"]["database"] = "measurements"
+
+      if configuration["influxdb"].has_key("policy") is False:
+        configuration["influxdb"]["policy"] = "sensor"
+
+      if configuration["influxdb"].has_key("prefix") is False:
+        configuration["influxdb"]["prefix"] = "weather"
+
+      if configuration["influxdb"].has_key("enabled") is False:
+        configuration["influxdb"]["enabled"] = True
+
+      print "Influxdb Configuration:"
+      print "Influxdb Client:     ", configuration["influxdb"]["client"]
+      print "Influxdb Username:   ", configuration["influxdb"]["username"]
+      print "Influxdb Password:   ", configuration["influxdb"]["password"]
+      print "Influxdb Server:     ", configuration["influxdb"]["server"]
+      print "Influxdb Port:       ", configuration["influxdb"]["port"]
+      print "Influxdb Database:   ", configuration["influxdb"]["database"]
+      print "Influxdb Policy:     ", configuration["influxdb"]["policy"]
+      print "Influxdb Prefix:     ", configuration["influxdb"]["prefix"]
+      print "Influxdb Enabled:    ", configuration["influxdb"]["enabled"]
+
+    except Exception, ex:
+      print "Error parsing influxdb configuration", ex
+      configuration["influxdb"]["enabled"] = False
+  else:
+    configuration["influxdb"] = {}
+    configuration["influxdb"]["enabled"] = False
 
   plants = []
   sensors = []
@@ -74,25 +146,19 @@ def main(argv):
     if miflora.has_key("sensors"):
       sensors = miflora["sensors"]
 
-  #print plants
-  #print sensors
-
   scanner = MifloraScanner()
   devices = scanner.discoverAll()
 
-  influxDbClient = InfluxDBClient(configuration["influxdb-server"], configuration["influxdb-port"], 
-    configuration["influxdb-username"], configuration["influxdb-password"], configuration["influxdb-database"])
+  if configuration["influxdb"]["enabled"]:
+    influxDbClient = InfluxDBClient(configuration["influxdb"]["server"], configuration["influxdb"]["port"], 
+      configuration["influxdb"]["username"], configuration["influxdb"]["password"], configuration["influxdb"]["database"])
 
-  try:
-    influxDbClient.create_database(configuration["influxdb-database"])
-  except InfluxDBClientError, ex:
-    print "InfluxDBClientError", ex
+    try:
+      influxDbClient.create_database(configuration["influxdb"]["database"])
+    except InfluxDBClientError, ex:
+      print "InfluxDBClientError", ex
 
-    # Drop and create
-    #client.drop_database(DBNAME)
-    #client.create_database(DBNAME)
-
-  influxDbClient.create_retention_policy(configuration["influxdb-policy"], 'INF', 3, default=True)
+    influxDbClient.create_retention_policy(configuration["influxdb"]["policy"], 'INF', 3, default=True)
 
   if devices is not None:
     for device in devices:
@@ -124,7 +190,7 @@ def main(argv):
         for i in range(0,10):
           if eventData is not None:
             #print "eventData", eventData
-            dataToPrometheus(sensorId, eventData.battery, eventData, configuration, devicePlant, influxDbClient)
+            pushData(sensorId, eventData.battery, eventData, configuration, devicePlant, influxDbClient)
             eventData = None
             observed = observed + 1
 
@@ -143,11 +209,11 @@ def main(argv):
           battery =  device.getBattery()
           realtimeData = device.getRealtimeData()
 
-          dataToPrometheus(sensorId, battery, realtimeData, configuration, devicePlant, influxDbClient)
+          pushData(sensorId, battery, realtimeData, configuration, devicePlant, influxDbClient)
 
           time.sleep(0.2)
 
-def dataToPrometheus(sensorId, battery, realtimeData, configuration, plant, influxDbClient):
+def pushData(sensorId, battery, realtimeData, configuration, plant, influxDbClient):
   flower = {}
 
   flower["plant"] = ("Plant", str(plant["name"]))
@@ -198,51 +264,66 @@ def dataToPrometheus(sensorId, battery, realtimeData, configuration, plant, infl
   now = datetime.utcnow()
   lastUtc = ("Updated", now.strftime("%Y-%m-%dT%H:%M:%SZ")) #2017-11-13T17:44:11Z
 
-  registry = CollectorRegistry()
-  for key in flower.keys():
+  if configuration["mqtt"]["enabled"]:
+    #print "Pushing Mqtt", influxDbJson
+    try:
+      print "Pushing Mqtt", sensorId, ":", configuration["mqtt"]["prefix"], flower
+      broadcastMqtt(
+        configuration["mqtt"]["client"], 
+        configuration["mqtt"]["server"], 
+        configuration["mqtt"]["port"], 
+        configuration["mqtt"]["prefix"], 
+        sensorId + "/update",
+        json.dumps(flower))
+    except Exception, ex:
+      print "Error on mqtt broadcast", ex
 
-    if type(flower[key][1]) is str:
-      if len(flower[key]) == 3:
-        e = Enum(configuration["prometheuspush-prefix"]  + '_' + key + '_total',
+  if configuration["prometheuspush"]["enabled"]:
+    registry = CollectorRegistry()
+    for key in flower.keys():
+
+      if type(flower[key][1]) is str:
+        if len(flower[key]) == 3:
+          e = Enum(configuration["prometheuspush"]["prefix"]  + '_' + key + '_total',
+            flower[key][0], ['sensorid'],
+            states=flower[key][2],
+            registry=registry)
+
+          e.labels(sensorid=sensorId).state(flower[key][1])
+      else:
+        g = Gauge(configuration["prometheuspush"]["prefix"]  + '_' + key + '_total',
           flower[key][0], ['sensorid'],
-          states=flower[key][2],
           registry=registry)
 
-        e.labels(sensorid=sensorId).state(flower[key][1])
-    else:
-      g = Gauge(configuration["prometheuspush-prefix"]  + '_' + key + '_total',
-        flower[key][0], ['sensorid'],
+        g.labels(sensorid=sensorId).set(flower[key][1])
+
+    print "Pushing", sensorId, ":", configuration["prometheuspush"]["prefix"] + '_' + key + '_total', "=", flower[key]
+    try:
+      push_to_gateway(configuration["prometheuspush"]["server"] + ":" + configuration["prometheuspush"]["port"],
+        job=configuration["prometheuspush"]["client"] + "_" + sensorId,
         registry=registry)
+    except Exception, ex:
+      print "Error on prometheus push", ex
 
-      g.labels(sensorid=sensorId).set(flower[key][1])
+  if configuration["influxdb"]["enabled"]:
+    influxDbJson = [
+    {
+      "measurement": configuration["influxdb"]["prefix"],
+      "tags": {
+          "sensor": sensorId,
+      },
+      "time": lastUtc[1],
+      "fields": {
+      }
+    }]
+    for key in flower.keys():
+      influxDbJson[0]["fields"][key] = flower[key][1]
 
-    print "Pushing", sensorId, ":", configuration["prometheuspush-prefix"] + '_' + key + '_total', "=", flower[key]
-
-  try:
-    push_to_gateway(configuration["prometheuspush-server"] + ":" + configuration["prometheuspush-port"],
-      job=configuration["prometheuspush-client"] + "_" + sensorId,
-      registry=registry)
-  except:
-    print "Prometheus not available"
-
-  influxDbJson = [
-  {
-    "measurement": configuration["influxdb-prefix"],
-    "tags": {
-        "sensor": sensorId,
-    },
-    "time": lastUtc[1],
-    "fields": {
-    }
-  }]
-  for key in flower.keys():
-    influxDbJson[0]["fields"][key] = flower[key][1]
-
-  print "Pushing", influxDbJson
-  try:
-    influxDbClient.write_points(influxDbJson, retention_policy=configuration["influxdb-policy"])
-  except:
-    print "Influxdb not available"
+    print "Pushing", influxDbJson
+    try:
+      influxDbClient.write_points(influxDbJson, retention_policy=configuration["influxdb"]["policy"])
+    except Exception, ex:
+      print "Error on influxdb write_points", ex
 
 if __name__ == "__main__":
   main(sys.argv)
