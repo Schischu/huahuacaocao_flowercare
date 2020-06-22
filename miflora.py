@@ -1,3 +1,5 @@
+#!/bin/usr/python3
+
 import binascii
 import struct
 import time
@@ -153,13 +155,13 @@ class MifloraScanner:
 
     mifloraDevices = []
     for device in devices:
-      #print device.getScanData()
+      #print(device.getScanData())
 
       manufactureId = "{}{}{}".format(device.addr[0:2], device.addr[3:5], device.addr[6:8]).upper()
       uniqueId = "{}{}".format(device.addr[-5:-3], device.addr[-2:]).upper()
 
       if filter is not None:
-        #print uniqueId.upper(), "?", filter.upper()
+        #print(uniqueId.upper(), "?", filter.upper())
         if uniqueId.upper() != filter.upper():
           continue
 
@@ -190,20 +192,20 @@ class MifloraScanner:
       if deviceInformation.uuid is not None:
         if deviceInformation.uuid in SCAN_UUIDS:
           if False:
-            print "deviceInformation.flags:", deviceInformation.flags
-            print "deviceInformation.addr:", deviceInformation.addr
-            print "deviceInformation.rssi:", deviceInformation.rssi
-            print "deviceInformation.id:", deviceInformation.id
-            print "deviceInformation.localName:", deviceInformation.localName
-            print "deviceInformation.uuid:", deviceInformation.uuid
-            print "deviceInformation.adData:", deviceInformation.adData
+            print("deviceInformation.flags:", deviceInformation.flags)
+            print("deviceInformation.addr:", deviceInformation.addr)
+            print("deviceInformation.rssi:", deviceInformation.rssi)
+            print("deviceInformation.id:", deviceInformation.id)
+            print("deviceInformation.localName:", deviceInformation.localName)
+            print("deviceInformation.uuid:", deviceInformation.uuid)
+            print("deviceInformation.adData:", deviceInformation.adData)
 
           if deviceInformation.adData is not None:
             #adData = "".join(reversed([deviceInformation.adData[i:i+2] for i in range(0, len(deviceInformation.adData), 2)]))
             adData = deviceInformation.adData[4:]
             hexAdData =  bytearray.fromhex(adData)
             #for i in hexAdData:
-            #  print '''%02X''' % (i)
+            #  print('''%02X''' % (i))
 
             version   =  (hexAdData[1] & 0xF0) >> 4
             flags     = ((hexAdData[1] & 0xF) << 4) | hexAdData[0]
@@ -220,7 +222,7 @@ class MifloraScanner:
             _isBindingFrame  = (flags & FrameControlFlags.Binding) != 0
 
             if False:
-              print "NF {}, CN {}, CE {}, EN {}, MA {}, CA {}, EV {}, CD {}, ST {}, BF {}".format(
+              print("NF {}, CN {}, CE {}, EN {}, MA {}, CA {}, EV {}, CD {}, ST {}, BF {}",
                 _isNewFactory, _isConnected, _isCentral, _isEncrypted,
                 _hasMacAddress, _hasCapabilities, _hasEvent, _hasCustomData,
                 _hasSubtitle, _isBindingFrame)
@@ -236,7 +238,7 @@ class MifloraScanner:
                 _macAddress = _macAddress + hex(hexAdData[offset+i]) + ":"
 
               if False:
-                print "MA", _macAddress
+                print("MA", _macAddress)
               offset += 6
 
             _capabilities = False
@@ -244,7 +246,7 @@ class MifloraScanner:
               _capabilities = hexAdData[offset]
               offset += 1
               if False:
-                print "CA", _capabilities
+                print("CA", _capabilities)
 
             if _hasEvent:
               eventID  = (hexAdData[offset + 1] << 8) | hexAdData[offset]
@@ -262,10 +264,10 @@ class MifloraScanner:
 
 
               if False:
-                print "eventID:", eventID 
-                print "eventName:", eventName 
-                print "dataLength:", dataLength 
-                print "eventData:", eventData 
+                print("eventID:", eventID)
+                print("eventName:", eventName)
+                print("dataLength:", dataLength)
+                print("eventData:", eventData)
 
               deviceInformation.eventData = Miflora.RealtimeData()
 
@@ -296,12 +298,12 @@ class MifloraScanner:
                 deviceInformation.eventData.unknown = deviceInformation.eventData.unknown / 10.0
 
               if False:
-                print "eventData:", deviceInformation.eventData
+                print("eventData:", deviceInformation.eventData)
 
           flower = Miflora(deviceInformation)
 
-          print "Found Flower:", flower
-          #print "-"*60
+          print("Found Flower:", flower)
+          #print("-"*60)
           mifloraDevices.append(flower)
 
     if len(mifloraDevices) == 0:
@@ -331,22 +333,22 @@ class Miflora:
 
 
   def connectAndSetup(self):
-    print "Connecting to", self._deviceInformation.addr
+    print("Connecting to", self._deviceInformation.addr)
     for i in range(0,10):
       try:
         ADDR_TYPE_PUBLIC = "public"
         self.peripheral = Peripheral(self._deviceInformation.addr, ADDR_TYPE_PUBLIC)
     
-        print "Connected to", self._deviceInformation.addr
+        print("Connected to", self._deviceInformation.addr)
         return True
-      except BTLEException, ex:
+      except BTLEException as ex:
         if i < 9:
-          print "Retrying (" + str(i) + ")"
+          print("Retrying (" + str(i) + ")")
         else:
-          print "BTLE Exception", ex
+          print("BTLE Exception", ex)
         continue
 
-    print "Connection to", self._deviceInformation.addr, "failed"
+    print("Connection to", self._deviceInformation.addr, "failed")
     return False
 
   def __str__(self):
@@ -366,10 +368,10 @@ class Miflora:
       if (ch.supportsRead()):
         val = ch.read()
         return val
-    except BTLEException, ex:
-      print "BTLE Exception", ex
+    except BTLEException as ex:
+      print("BTLE Exception", ex)
 
-    print "Error on readCharacteristic"
+    print("Error on readCharacteristic")
     return None
 
   def readDataCharacteristic(self, serviceUuid, characteristicUuid):
@@ -380,10 +382,10 @@ class Miflora:
         val = binascii.b2a_hex(val)
         val = binascii.unhexlify(val)
         return val
-    except BTLEException, ex:
-      print "BTLE Exception", ex
+    except BTLEException as ex:
+      print("BTLE Exception", ex)
 
-    print "Error on readDataCharacteristic"
+    print("Error on readDataCharacteristic")
     return None
 
   class NotifyDelegate(DefaultDelegate):
@@ -392,7 +394,7 @@ class Miflora:
       self.miflora = miflora
 
     def handleNotification(self, cHandle, data):
-      print "handleNotification", cHandle, data
+      print("handleNotification", cHandle, data)
       if cHandle == 33:
         self.miflora.onRealtimeData(data)
 
@@ -423,12 +425,28 @@ class Miflora:
     if data is None:
       return None
 
-    batteryLevel = ord(data[0])
+    #print("DATA", " ".join("{:02x}".format(c) for c in data))
+
+    try:
+      batteryLevel = data[0]
+    except Exception as ex:
+      print("Error parsing battery level", ex, "Data=", data)
+      batteryLevel = 0
 
     return batteryLevel
 
   def getDeviceFirmwareVersion(self):
-    return None
+    data = self.readDataCharacteristic(DATA_SERVICE_UUID, DATA_BATTERY_VERSION_UUID)
+    if data is None:
+      return None
+
+    try:
+      version = data[5:]
+    except Exception as ex:
+      print("Error parsing version", ex)
+      version = "Unknown"
+
+    return batteryLevel
 
   def getEventData(self):
     return self._deviceInformation.eventData
@@ -480,7 +498,7 @@ class Miflora:
 
       data = self.readDataCharacteristic(DATA_SERVICE_UUID, DATA_DATA_UUID)
 
-      #print "DATA", " ".join("{:02x}".format(ord(c)) for c in data)
+      #print("DATA", " ".join("{:02x}".format(ord(c)) for c in data))
 
       #09 01 
       #00 
@@ -508,8 +526,8 @@ class Miflora:
       realtimeData.light = (realtimeData.light * 1.0) / 1000.0
 
       self.notifyCharacteristic(DATA_SERVICE_UUID, DATA_WRITE_MODE_CHANGE_UUID, False)
-    except Exception, ex:
-      print ex
+    except Exception as ex:
+      print(ex)
 
     return realtimeData
 
@@ -519,8 +537,8 @@ class Miflora:
 def main(argv):
   deviceFilter = None
 
-  print "Starting"
-  print "-"*60
+  print("Starting")
+  print("-"*60)
 
   if len(argv) > 1:
     deviceFilter = argv[1].upper()
@@ -535,25 +553,25 @@ def main(argv):
       devices = scanner.discoverAll()
 
     if devices is not None:
-      print "-"*60
+      print("-"*60)
       for device in devices:
-        #print "Connecting to", device
-        print "EventData", device, device.getEventData()
+        #print("Connecting to", device)
+        print("EventData", device, device.getEventData())
       break
 
   if devices is not None:
-    print "-"*60
+    print("-"*60)
     for device in devices:
-      #print "Connecting to", device
-      #print "EventData", device.getEventData()
+      #print("Connecting to", device)
+      #print("EventData", device.getEventData())
 
       if device.connectAndSetup() is True:
-        print "Battery     ", device.getBattery(), "%"
-        print "RealtimeData", device.getRealtimeData()
+        print("Battery     ", device.getBattery(), "%")
+        print("RealtimeData", device.getRealtimeData())
 
-      print "-"*60
+      print("-"*60)
   else:
-    print "No devices found"
+    print("No devices found")
 
 if __name__ == "__main__":
   main(sys.argv)
