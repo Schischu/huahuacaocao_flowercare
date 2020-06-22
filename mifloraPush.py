@@ -32,7 +32,7 @@ def main(argv):
   if "mqtt" in configuration:
     try:
       if "client" not in configuration["mqtt"]:
-        configuration["mqtt"]["client"] = "Ruuvi-Mqtt"
+        configuration["mqtt"]["client"] = "Miflora-Mqtt"
 
       if "server" not in configuration["mqtt"]:
         configuration["mqtt"]["server"] = "127.0.0.1"
@@ -69,7 +69,7 @@ def main(argv):
         configuration["prometheuspush"]["port"] = 9091
 
       if "client" not in configuration["prometheuspush"]:
-        configuration["prometheuspush"]["client"] = "Ruuvi-Prometheus"
+        configuration["prometheuspush"]["client"] = "Miflora-Prometheus"
 
       if "prefix" not in configuration["prometheuspush"]:
         configuration["prometheuspush"]["prefix"] = "flower"
@@ -94,7 +94,7 @@ def main(argv):
   if "influxdb" in configuration:
     try:
       if "client" not in configuration["influxdb"]:
-        configuration["influxdb"]["client"] = "Ruuvi-Influxdb"
+        configuration["influxdb"]["client"] = "Miflora-Influxdb"
 
       if "server" not in configuration["influxdb"]:
         configuration["influxdb"]["server"] = "127.0.0.1"
