@@ -41,7 +41,7 @@ def main(argv):
         configuration["mqtt"]["port"] = 1883
 
       if "prefix" not in configuration["mqtt"]:
-        configuration["mqtt"]["prefix"] = "weather"
+        configuration["mqtt"]["prefix"] = "flower"
 
       if "enabled" not in configuration["mqtt"]:
         configuration["mqtt"]["enabled"] = True
@@ -72,7 +72,7 @@ def main(argv):
         configuration["prometheuspush"]["client"] = "Ruuvi-Prometheus"
 
       if "prefix" not in configuration["prometheuspush"]:
-        configuration["prometheuspush"]["prefix"] = "weather"
+        configuration["prometheuspush"]["prefix"] = "flower"
 
       if "enabled" not in configuration["prometheuspush"]:
         configuration["prometheuspush"]["enabled"] = True
@@ -115,7 +115,7 @@ def main(argv):
         configuration["influxdb"]["policy"] = "sensor"
 
       if "prefix" not in configuration["influxdb"]:
-        configuration["influxdb"]["prefix"] = "weather"
+        configuration["influxdb"]["prefix"] = "flower"
 
       if "enabled" not in configuration["influxdb"]:
         configuration["influxdb"]["enabled"] = True
